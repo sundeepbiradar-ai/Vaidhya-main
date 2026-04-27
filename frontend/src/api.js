@@ -1,10 +1,13 @@
 import axios from 'axios';
 
-// Configure axios defaults
-axios.defaults.baseURL = 'http://localhost:3001';
+// Configure axios defaults using relative URL by default.
+// This avoids hardcoding localhost and works with CRA proxy or same-origin deployment.
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || ''
+});
 
 // Add request interceptor to include auth token
-axios.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -18,7 +21,7 @@ axios.interceptors.request.use(
 );
 
 // Add response interceptor to handle errors
-axios.interceptors.response.use(
+api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -29,4 +32,4 @@ axios.interceptors.response.use(
   }
 );
 
-export default axios;
+export default api;

@@ -1,84 +1,116 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
+const db = require('../db');
 
 const router = express.Router();
 
-// Placeholder hospital data - replace with database
-const hospitals = [
-  {
-    id: 1,
-    name: 'City General Hospital',
-    address: '123 Main St, Mumbai',
-    city: 'Mumbai',
-    contact_number: '+91-9876543210',
-    email: 'info@citygeneral.com',
-    departments: ['Cardiology', 'Neurology', 'Orthopedics'],
-    bed_availability: { total: 200, available: 45 },
-    rating: 4.2
-  },
-  {
-    id: 2,
-    name: 'Metro Medical Center',
-    address: '456 Health Ave, Delhi',
-    city: 'Delhi',
-    contact_number: '+91-9876543211',
-    email: 'info@metromedical.com',
-    departments: ['Cardiology', 'Oncology', 'Pediatrics'],
-    bed_availability: { total: 150, available: 30 },
-    rating: 4.5
-  }
-];
-
 // Get all hospitals
-router.get('/', (req, res) => {
-  const { city, limit = 10 } = req.query;
-  let filteredHospitals = hospitals;
-  
-  if (city) {
-    filteredHospitals = hospitals.filter(h => 
-      h.city.toLowerCase().includes(city.toLowerCase())
-    );
+router.get('/', async (req, res) => {
+  try {
+    const { city, limit = 10 } = req.query;
+    let query = 'SELECT * FROM Hospitals';
+    let params = [];
+    let conditions = [];
+
+    if (city) {
+      conditions.push('city ILIKE $' + (params.length + 1));
+      params.push(`%${city}%`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' LIMIT $' + (params.length + 1);
+    params.push(limit);
+
+    const result = await db.query(query, params);
+    res.json({
+      hospitals: result.rows,
+      total: result.rows.length
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
-  
-  res.json({
-    hospitals: filteredHospitals.slice(0, limit),
-    total: filteredHospitals.length
-  });
 });
 
 // Search hospitals
-router.get('/search', (req, res) => {
-  const { q, city } = req.query;
-  let results = hospitals;
-  
-  if (q) {
-    results = results.filter(h => 
-      h.name.toLowerCase().includes(q.toLowerCase()) ||
-      h.city.toLowerCase().includes(q.toLowerCase())
-    );
+router.get('/search', async (req, res) => {
+  try {
+    const { q, city } = req.query;
+    let query = 'SELECT * FROM Hospitals';
+    let params = [];
+    let conditions = [];
+
+    if (q) {
+      conditions.push('(hospital_name ILIKE $' + (params.length + 1) + ' OR city ILIKE $' + (params.length + 2) + ')');
+      params.push(`%${q}%`, `%${q}%`);
+    }
+
+    if (city) {
+      conditions.push('city ILIKE $' + (params.length + 1));
+      params.push(`%${city}%`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    const result = await db.query(query, params);
+    res.json({ results: result.rows, count: result.rows.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
-  
-  if (city) {
-    results = results.filter(h => h.city.toLowerCase() === city.toLowerCase());
-  }
-  
-  res.json({ results, count: results.length });
 });
 
 // Get hospital by ID
-router.get('/:id', (req, res) => {
-  const hospital = hospitals.find(h => h.id === parseInt(req.params.id));
-  if (!hospital) {
-    return res.status(404).json({ error: 'Hospital not found' });
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM Hospitals WHERE hospital_id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+    res.json({ hospital: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
   }
-  res.json({ hospital });
 });
 
 // Compare hospitals
-router.post('/compare', (req, res) => {
-  const { hospitalIds } = req.body;
-  const comparison = hospitals.filter(h => hospitalIds.includes(h.id));
-  res.json({ comparison });
+router.post('/compare', async (req, res) => {
+  try {
+    const { hospitalIds } = req.body;
+    if (!hospitalIds || !Array.isArray(hospitalIds)) {
+      return res.status(400).json({ error: 'hospitalIds array required' });
+    }
+
+    const placeholders = hospitalIds.map((_, i) => `$${i + 1}`).join(',');
+    const hospitalsResult = await db.query(`SELECT * FROM Hospitals WHERE hospital_id IN (${placeholders})`, hospitalIds);
+
+    // For each hospital, get additional data
+    const comparison = await Promise.all(hospitalsResult.rows.map(async (hospital) => {
+      const [facilities, beds, doctors] = await Promise.all([
+        db.query('SELECT * FROM Facilities WHERE hospital_id = $1', [hospital.hospital_id]),
+        db.query('SELECT * FROM Beds WHERE hospital_id = $1', [hospital.hospital_id]),
+        db.query('SELECT * FROM Doctors WHERE hospital_id = $1', [hospital.hospital_id])
+      ]);
+
+      return {
+        ...hospital,
+        facilities: facilities.rows,
+        beds: beds.rows,
+        doctors: doctors.rows
+      };
+    }));
+
+    res.json({ comparison });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 module.exports = router;

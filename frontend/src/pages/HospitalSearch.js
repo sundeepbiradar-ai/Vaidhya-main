@@ -71,14 +71,14 @@ function HospitalSearch() {
 
       <Row>
         {hospitals.map(hospital => (
-          <Col md={6} lg={4} key={hospital.id} className="mb-4">
+          <Col md={6} lg={4} key={hospital.hospital_id} className="mb-4">
             <Card>
               <Card.Body>
-                <Card.Title>{hospital.name}</Card.Title>
+                <Card.Title>{hospital.hospital_name}</Card.Title>
                 <Card.Text>{hospital.address}</Card.Text>
                 <Card.Text>Rating: {hospital.rating}/5</Card.Text>
-                <Card.Text>Available Beds: {hospital.bed_availability?.available}/{hospital.bed_availability?.total}</Card.Text>
-                <Button variant="outline-primary" href={`/hospital/${hospital.id}`}>
+                <Card.Text>City: {hospital.city}</Card.Text>
+                <Button variant="outline-primary" href={`/hospital/${hospital.hospital_id}`}>
                   View Details
                 </Button>
               </Card.Body>

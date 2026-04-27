@@ -26,10 +26,12 @@ function ForgotPassword() {
       setSuccess(response.data.message || 'Your password has been updated. Please log in.');
       setError('');
     } catch (error) {
-      const message = error.response?.data?.error || error.message || 'Unable to reset password. Please try again.';
-      if (error.response?.status === 404) {
+      if (!error.response) {
+        setError('Unable to connect to the server. Please check your network or make sure the backend is running.');
+      } else if (error.response.status === 404) {
         setError('No account found with that email. Please register now.');
       } else {
+        const message = error.response?.data?.error || error.message || 'Unable to reset password. Please try again.';
         setError(message);
       }
       console.error('Forgot password error:', error.response?.data || error.message || error);

@@ -27,7 +27,7 @@ function HospitalDetail() {
         <Col lg={8}>
           <Card className="mb-4">
             <Card.Body>
-              <Card.Title>{hospital.name}</Card.Title>
+              <Card.Title>{hospital.hospital_name}</Card.Title>
               <Card.Text>{hospital.address}</Card.Text>
               <Card.Text>{hospital.contact_number}</Card.Text>
               <Badge bg="success" className="me-2">Rating: {hospital.rating}/5</Badge>
@@ -55,7 +55,7 @@ function HospitalDetail() {
         <Col lg={4}>
           <Card>
             <Card.Body>
-              <Button variant="primary" className="w-100 mb-2" href={`/booking/${hospital.id}`}>
+              <Button variant="primary" className="w-100 mb-2" href={`/booking/${hospital.hospital_id}`}>
                 Book Appointment
               </Button>
               <Button variant="outline-primary" className="w-100">
