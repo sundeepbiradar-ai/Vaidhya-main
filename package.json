@@ -1,0 +1,13 @@
+{
+  "name": "hospital-comparison-monorepo",
+  "private": true,
+  "scripts": {
+    "start": "npm run start:frontend",
+    "start:all": "npx concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "stop:all": "npx kill-port 3000 3001",
+    "start:frontend": "cd frontend && npm install && npm start",
+    "start:backend": "cd backend && npm install && npm start",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && npm install && npm test"
+  }
+}
