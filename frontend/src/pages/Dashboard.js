@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, ListGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, ListGroup, Alert } from 'react-bootstrap';
 import api from '../api';
 
 function Dashboard() {
   const [user, setUser] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -40,6 +42,24 @@ function Dashboard() {
     window.location.href = '/login';
   };
 
+  const handleRefreshData = async () => {
+    setRefreshing(true);
+    setRefreshMessage('Refreshing hospital data...');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.post('/api/hospitals/refresh', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRefreshMessage(response.data.message);
+    } catch (error) {
+      console.error('Data refresh failed:', error);
+      setRefreshMessage('Data refresh failed. Please try again later.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (!user) return <Container className="py-5">Loading...</Container>;
 
   return (
@@ -70,8 +90,12 @@ function Dashboard() {
                 </ListGroup>
               )}
               
-              <Button variant="primary" href="/search" className="mt-3">
+              {refreshMessage && <Alert variant={refreshMessage.includes('failed') ? 'danger' : 'success'}>{refreshMessage}</Alert>}
+              <Button variant="primary" href="/search" className="mt-3 me-2">
                 Find More Hospitals
+              </Button>
+              <Button variant="outline-secondary" onClick={handleRefreshData} disabled={refreshing} className="mt-3">
+                {refreshing ? 'Refreshing...' : 'Refresh Hospital Data'}
               </Button>
             </Card.Body>
           </Card>

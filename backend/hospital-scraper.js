@@ -55,7 +55,7 @@ const DATA_SOURCES = [
   },
   {
     name: 'JustDial Hospitals',
-    url: 'https://www.justdial.com/Delhi/Hospitals/nct-10000001',
+    url: 'https://www.justdial.com/Pune/Hospitals/nct-10253670',
     type: 'directory',
     selectors: ['.cntanr', '.store-details', '.contact-info']
   },
@@ -601,10 +601,13 @@ async function updateHospitalBeds(hospitalId, hospital) {
   // Clear existing beds and add updated ones
   await db.query('DELETE FROM Beds WHERE hospital_id = $1', [hospitalId]);
 
+  const totalBeds = Number.isFinite(hospital.totalBeds) ? hospital.totalBeds : 0;
+  const icuBeds = Number.isFinite(hospital.icuBeds) ? hospital.icuBeds : 0;
+
   const beds = [
-    { type: 'General', total: Math.floor(hospital.totalBeds * 0.6), available: Math.floor(hospital.totalBeds * 0.4), charges: 1500.00 },
-    { type: 'Private', total: Math.floor(hospital.totalBeds * 0.2), available: Math.floor(hospital.totalBeds * 0.15), charges: 3000.00 },
-    { type: 'ICU', total: hospital.icuBeds || 20, available: Math.floor((hospital.icuBeds || 20) * 0.7), charges: 8000.00 }
+    { type: 'General', total: Math.floor(totalBeds * 0.6), available: Math.floor(totalBeds * 0.4), charges: 1500.00 },
+    { type: 'Private', total: Math.floor(totalBeds * 0.2), available: Math.floor(totalBeds * 0.15), charges: 3000.00 },
+    { type: 'ICU', total: icuBeds || 20, available: Math.floor((icuBeds || 20) * 0.7), charges: 8000.00 }
   ];
 
   for (const bed of beds) {
@@ -776,10 +779,78 @@ async function extractFromDirectorySite($, source) {
     });
   }
 
+  // If this is a JustDial directory page, also parse JSON-LD structured data
+  if (source.url.includes('justdial.com')) {
+    const jsonLdHospitals = extractFromJsonLd($, source);
+    hospitals.push(...jsonLdHospitals);
+  }
+
   // Process extracted hospitals
-  for (const hospital of hospitals.slice(0, 10)) { // Limit to 10 per source
+  for (const hospital of hospitals.slice(0, 20)) { // Limit to 20 per source
     await processScrapedHospital(hospital);
   }
+}
+
+function extractFromJsonLd($, source) {
+  const hospitals = [];
+  $('script[type="application/ld+json"]').each((index, element) => {
+    let jsonText = $(element).html();
+    if (!jsonText) return;
+
+    try {
+      const data = JSON.parse(jsonText.trim());
+      const items = Array.isArray(data) ? data : [data];
+
+      items.forEach((item) => {
+        const types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
+        if (types.includes('Hospital') || types.includes('LocalBusiness') || types.includes('Organization')) {
+          const name = item.name || '';
+          const addressObj = item.address || {};
+          const addressParts = [];
+          const getField = (obj, ...keys) => keys.map((k) => obj[k]).find((v) => v);
+
+          if (typeof addressObj === 'string') {
+            addressParts.push(addressObj);
+          } else {
+            if (addressObj.streetAddress) addressParts.push(addressObj.streetAddress);
+            if (addressObj.addressLocality) addressParts.push(addressObj.addressLocality);
+            if (addressObj.addresslocality) addressParts.push(addressObj.addresslocality);
+            if (addressObj.addressRegion) addressParts.push(addressObj.addressRegion);
+            if (addressObj.addressregion) addressParts.push(addressObj.addressregion);
+            if (addressObj.postalCode) addressParts.push(addressObj.postalCode);
+            if (addressObj.postalcode) addressParts.push(addressObj.postalcode);
+          }
+
+          const address = addressParts.filter(Boolean).join(', ');
+          const contact = item.telephone || item.phone || item.contactPoint?.telephone || '';
+          const city = getField(addressObj, 'addressLocality', 'addresslocality', 'addressRegion', 'addressregion') || source.url.split('/')[3] || 'Unknown';
+
+          if (name && address) {
+            hospitals.push({
+              name: name.replace(/\d+$/, '').trim(),
+              address,
+              contact,
+              city,
+              source: source.name
+            });
+          }
+        }
+      });
+    } catch (error) {
+      // ignore parse failures for non-JSON content
+    }
+  });
+
+  if (source.url.includes('justdial.com')) {
+    console.log(`JustDial JSON-LD extracted ${hospitals.length} hospital entries from ${source.url}`);
+  }
+
+  return hospitals;
+}
+
+async function extractFromGovernmentSite($, source) {
+  console.log(`No dedicated parser available for government source: ${source.name}`);
+  return;
 }
 
 async function processScrapedHospital(hospitalData) {

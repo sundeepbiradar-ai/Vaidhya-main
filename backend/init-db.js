@@ -1,16 +1,21 @@
+require('dotenv').config();
 const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
 async function initDatabase() {
-  // Connect directly to hospital_db
-  const client = new Client({
-    host: 'localhost',
-    port: 5433,
-    user: 'postgres',
-    password: 'password',
-    database: 'hospital_db'
-  });
+  // Connect directly to hospital_db, using environment variables for a fixed local development password
+  const clientConfig = process.env.DATABASE_URL
+    ? { connectionString: process.env.DATABASE_URL }
+    : {
+        host: process.env.DB_HOST || '127.0.0.1',
+        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5433,
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'Sapna@1803',
+        database: process.env.DB_NAME || 'hospital_db',
+      };
+
+  const client = new Client(clientConfig);
 
   try {
     await client.connect();

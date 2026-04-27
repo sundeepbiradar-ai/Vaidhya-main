@@ -10,16 +10,20 @@
 
 3. Create user:
    ```sql
-   CREATE USER hospital_user WITH PASSWORD 'your_password';
+   CREATE USER hospital_user WITH PASSWORD 'Sapna@1803';
    GRANT ALL PRIVILEGES ON DATABASE hospital_comparison TO hospital_user;
    ```
 
 ## Environment Variables
 
-Create a `.env` file in the backend directory:
+Create a `.env` file in the backend directory with the following values:
 
 ```
-DATABASE_URL=postgresql://hospital_user:your_password@localhost:5432/hospital_comparison
+DB_HOST=127.0.0.1
+DB_PORT=5433
+DB_USER=postgres
+DB_PASSWORD=Sapna@1803
+DB_NAME=hospital_db
 JWT_SECRET=your_super_secret_jwt_key_here
 PORT=3001
 NODE_ENV=development

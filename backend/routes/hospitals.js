@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const db = require('../db');
+const { scrapeHospitalData } = require('../hospital-scraper');
 
 const router = express.Router();
 
@@ -110,6 +111,20 @@ router.post('/compare', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Manual data refresh endpoint
+router.post('/refresh', authenticateToken, async (req, res) => {
+  try {
+    scrapeHospitalData()
+      .then(() => console.log('Manual hospital data refresh completed.'))
+      .catch((err) => console.error('Manual hospital data refresh error:', err));
+
+    res.json({ message: 'Hospital data refresh started. Data will be saved permanently once complete.' });
+  } catch (err) {
+    console.error('Failed to start manual data refresh:', err);
+    res.status(500).json({ error: 'Failed to start manual refresh' });
   }
 });
 
