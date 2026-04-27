@@ -32,9 +32,10 @@ router.post('/register', async (req, res) => {
     users.push(user);
 
     // Generate token
+    const jwtSecret = process.env.JWT_SECRET || 'defaultsecret';
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: '24h' }
     );
 
@@ -59,15 +60,53 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
+    const jwtSecret = process.env.JWT_SECRET || 'defaultsecret';
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: '24h' }
     );
 
     res.json({ token, user: { id: user.id, email: user.email } });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Check if a user exists
+router.post('/check-user', (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  const user = users.find(u => u.email === email);
+  return res.json({ exists: !!user });
+});
+
+// Forgot password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    res.json({ message: 'Password has been updated successfully. Please log in with your new password.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Password reset failed' });
   }
 });
 

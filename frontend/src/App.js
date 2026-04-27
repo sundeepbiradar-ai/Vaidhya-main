@@ -10,6 +10,7 @@ import HospitalDetail from './pages/HospitalDetail';
 import HospitalCompare from './pages/HospitalCompare';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Booking from './pages/Booking';
 
@@ -26,6 +27,7 @@ function App() {
             <Route path="/compare" element={<HospitalCompare />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/booking/:hospitalId" element={<Booking />} />
           </Routes>
