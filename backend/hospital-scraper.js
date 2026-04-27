@@ -519,7 +519,10 @@ async function runManualScrape() {
 async function updateWithEnhancedData() {
   console.log('Updating with enhanced hospital data...');
 
-  for (const hospital of ENHANCED_HOSPITAL_DATA) {
+  // Combine both data sets
+  const allHospitalData = [...ENHANCED_HOSPITAL_DATA, ...ADDITIONAL_HOSPITAL_DATA];
+
+  for (const hospital of allHospitalData) {
     try {
       // Check if hospital already exists
       const existing = await db.query(
@@ -662,12 +665,39 @@ async function scrapeFromWebSources() {
     try {
       console.log(`Scraping from ${source.name}...`);
 
-      const response = await axios.get(source.url, {
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      // Try multiple times with different user agents
+      const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      ];
+
+      let response;
+      for (const userAgent of userAgents) {
+        try {
+          response = await axios.get(source.url, {
+            timeout: 15000,
+            headers: {
+              'User-Agent': userAgent,
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+              'Accept-Encoding': 'gzip, deflate',
+              'Connection': 'keep-alive',
+              'Upgrade-Insecure-Requests': '1'
+            },
+            maxRedirects: 5
+          });
+          break; // Success, exit retry loop
+        } catch (error) {
+          console.log(`Attempt with user agent failed: ${error.message}`);
+          continue;
         }
-      });
+      }
+
+      if (!response) {
+        console.log(`Failed to fetch ${source.name} after all attempts`);
+        continue;
+      }
 
       const $ = cheerio.load(response.data);
 
@@ -676,11 +706,16 @@ async function scrapeFromWebSources() {
         await extractFromHospitalWebsite($, source);
       } else if (source.type === 'government') {
         await extractFromGovernmentSite($, source);
+      } else if (source.type === 'directory') {
+        await extractFromDirectorySite($, source);
       }
 
     } catch (error) {
       console.log(`Failed to scrape ${source.name}:`, error.message);
     }
+
+    // Add delay between requests to be respectful
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 }
 
@@ -717,28 +752,32 @@ async function extractFromHospitalWebsite($, source) {
   }
 }
 
-async function extractFromGovernmentSite($, source) {
-  // Extract information from government health portals
+async function extractFromDirectorySite($, source) {
+  // Extract information from directory sites like JustDial, Practo
   const hospitals = [];
 
-  // Look for hospital directories or listings
-  $('.hospital-info, .medical-center, .health-facility').each((index, element) => {
-    const name = $(element).find('.hospital-name, .facility-name').text().trim();
-    const location = $(element).find('.location, .district').text().trim();
-    const type = $(element).find('.type, .category').text().trim();
+  // Common selectors for directory sites
+  const selectors = source.selectors || ['.cntanr', '.store-details', '.contact-info', '.c-card'];
 
-    if (name && location) {
-      hospitals.push({
-        name: name,
-        city: location.split(',')[0]?.trim(),
-        state: location.split(',')[1]?.trim(),
-        ownership: type,
-        source: 'Government'
-      });
-    }
-  });
+  for (const selector of selectors) {
+    $(selector).each((index, element) => {
+      const name = $(element).find('h2, .name, .title, a').first().text().trim();
+      const address = $(element).find('.address, .location, .adr').text().trim();
+      const phone = $(element).find('.phone, .contact, .tel').text().trim();
 
-  for (const hospital of hospitals) {
+      if (name && name.length > 3 && address) {
+        hospitals.push({
+          name: name.replace(/\d+/g, '').trim(), // Remove numbers that might be rankings
+          address: address,
+          contact: phone,
+          source: source.name
+        });
+      }
+    });
+  }
+
+  // Process extracted hospitals
+  for (const hospital of hospitals.slice(0, 10)) { // Limit to 10 per source
     await processScrapedHospital(hospital);
   }
 }
