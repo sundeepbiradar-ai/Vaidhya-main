@@ -27,15 +27,10 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/admin": [
+    "/hospital/[id]": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin.js"
-    ],
-    "/doctors": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/doctors.js"
+      "static/chunks/pages/hospital/[id].js"
     ],
     "/search": [
       "static/chunks/webpack.js",
