@@ -8,14 +8,16 @@ const bookings = [];
 
 // Create booking
 router.post('/', authenticateToken, (req, res) => {
-  const { hospital_id, procedure, booking_date } = req.body;
+  const { doctor_id, hospital_id, appointment_date, slot, consultation_type } = req.body;
   
   const booking = {
     id: bookings.length + 1,
     patient_id: req.user.id,
-    hospital_id,
-    procedure,
-    booking_date,
+    doctor_id: parseInt(doctor_id),
+    hospital_id: parseInt(hospital_id),
+    appointment_date,
+    slot,
+    consultation_type,
     status: 'pending',
     created_at: new Date()
   };
@@ -25,9 +27,9 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // Get user bookings
-router.get('/my', authenticateToken, (req, res) => {
+router.get('/me', authenticateToken, (req, res) => {
   const userBookings = bookings.filter(b => b.patient_id === req.user.id);
-  res.json({ bookings: userBookings });
+  res.json({ appointments: userBookings });
 });
 
 // Get booking by ID

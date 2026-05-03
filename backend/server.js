@@ -48,8 +48,14 @@ app.use('/api/auth', require('./routes/auth'));
 // Hospital routes
 app.use('/api/hospitals', require('./routes/hospitals'));
 
-// Booking routes
-app.use('/api/bookings', require('./routes/bookings'));
+// Doctor routes
+app.use('/api/doctors', require('./routes/doctors'));
+
+// Search routes
+app.use('/api/search', require('./routes/search'));
+
+// Appointment routes
+app.use('/api/appointments', require('./routes/appointments'));
 
 // SPA fallback - serve index.html for any non-API routes
 app.get('*', (req, res) => {

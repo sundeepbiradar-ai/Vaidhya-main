@@ -3,22 +3,27 @@
 A web application for patients to discover, compare, and book hospitals and healthcare services.
 
 ## Tech Stack
-- **Backend**: Node.js, Express.js, PostgreSQL
-- **Frontend**: React.js
+- **Backend**: Node.js, Express.js, PostgreSQL, Elasticsearch, Redis
+- **Frontend**: Next.js (SSR/SEO optimized)
 - **Database**: PostgreSQL
-- **Authentication**: JWT
+- **Authentication**: JWT with role-based access control
+- **Jobs**: cron / background refresh
+- **Search**: Elasticsearch fuzzy search, geo ranking
 
 ## Project Structure
-- `backend/` - API server with authentication and business logic
-- `frontend/` - React web application
+- `backend/` - Scalable API server, search, caching, ingestion, booking and admin routes
+- `frontend-next/` - Next.js frontend for SEO-friendly hospital discovery
 - `database/` - Database schemas and migrations
-- `docs/` - Documentation
+- `docs/` - API documentation
 
-## MVP Features
-- User authentication (register/login)
-- Hospital search and listing
-- Hospital details and comparison
-- Basic booking system
+## Platform Features
+- Intelligent fuzzy hospital search with typo tolerance and geo ranking
+- Location-based recommendations and scoring
+- Google Places ingestion for new city discovery
+- Doctor onboarding, availability slots, and appointment booking
+- Admin hospital and doctor management interfaces
+- Redis caching and Elasticsearch search optimization
+- Swagger API documentation and deployment-ready configuration
 
 ## Getting Started
 
